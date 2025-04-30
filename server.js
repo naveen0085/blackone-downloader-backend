@@ -1,38 +1,38 @@
 const express = require("express");
 const cors = require("cors");
+const bodyParser = require("body-parser");
 const { execFile } = require("child_process");
 const path = require("path");
-const fs = require("fs");
+
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 app.use(cors());
-app.use(express.json());
+app.use(bodyParser.json());
 
-app.post("/api/download", async (req, res) => {
-    const videoUrl = req.body.url;
-    if (!videoUrl) return res.status(400).json({ error: "Missing URL" });
+app.post("/api/json", async (req, res) => {
+  const videoURL = req.body.url;
+  if (!videoURL) {
+    return res.status(400).json({ error: "No URL provided" });
+  }
 
-    const id = Math.random().toString(36).substring(2, 10);
-    const outputPath = path.resolve(__dirname, `video_${id}.mp4`);
+  const ytdlpPath = path.join(__dirname, "yt-dlp");
 
-    execFile(
-        path.resolve(__dirname, "yt-dlp"),
-        ["-f", "mp4", "-o", outputPath, videoUrl],
-        (error, stdout, stderr) => {
-            if (error) {
-                console.error("yt-dlp error:", stderr);
-                return res.status(500).json({ error: "Download failed" });
-            }
+  execFile(
+    ytdlpPath,
+    ["-g", "-f", "best", videoURL],
+    (error, stdout, stderr) => {
+      if (error) {
+        console.error("yt-dlp error:", stderr);
+        return res.status(500).json({ error: "yt-dlp failed", details: stderr });
+      }
 
-            // Serve video URL
-            res.json({ url: `https://yourdomain.com/video_${id}.mp4` });
-        }
-    );
+      const directURL = stdout.trim().split("\n").pop();
+      return res.json({ url: directURL });
+    }
+  );
 });
 
-app.use(express.static(path.resolve(__dirname)));
-
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
