@@ -1,39 +1,33 @@
-const express = require("express");
-const { exec } = require("child_process");
-const fs = require("fs");
-const path = require("path");
-const cors = require("cors");
+const express = require('express');
+const cors = require('cors');
+const { exec } = require('child_process');
+const path = require('path');
+
 const app = express();
-const PORT = process.env.PORT || 10000;
+const PORT = 10000;
 
 app.use(cors());
 app.use(express.json());
 
-app.post("/download", (req, res) => {
+app.post('/download', (req, res) => {
   const videoUrl = req.body.url;
-  console.log(`Processing download for: ${videoUrl}`);
+  if (!videoUrl) {
+    return res.status(400).json({ error: 'No URL provided' });
+  }
 
-  const outputFile = "video.mp4";
-  const command = `yt-dlp -f mp4 -o "${outputFile}" "${videoUrl}"`;
+  const outputPath = path.join(__dirname, 'downloads', '%(title)s.%(ext)s');
+  const command = `yt-dlp -o "${outputPath}" "${videoUrl}"`;
 
   exec(command, (error, stdout, stderr) => {
     if (error) {
-      console.error("yt-dlp error:", stderr);
-      return res.status(500).send("Download failed.");
+      console.error(`Error downloading video: ${stderr}`);
+      return res.status(500).json({ error: 'Failed to download video' });
     }
-
-    console.log("Download complete. Sending file...");
-    res.download(path.join(__dirname, outputFile), (err) => {
-      if (err) {
-        console.error("File send error:", err);
-      }
-
-      // Clean up the file afterward
-      fs.unlinkSync(outputFile);
-    });
+    console.log(`Video downloaded: ${stdout}`);
+    res.status(200).json({ message: 'Download initiated' });
   });
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });

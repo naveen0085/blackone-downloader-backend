@@ -1,5 +1,5 @@
 {
-  "name": "blackone-downloader-backend",
+  "name": "blackone-downloader",
   "version": "1.0.0",
   "description": "Video downloader backend using yt-dlp for YouTube, Instagram, TikTok, and Facebook",
   "main": "server.js",
@@ -8,7 +8,6 @@
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.18.2",
-    "yt-dlp-exec": "^1.0.3"
+    "express": "^4.18.2"
   }
 }
