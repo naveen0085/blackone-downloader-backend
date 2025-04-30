@@ -3,4 +3,6 @@ services:
     name: blackone-downloader-backend
     env: docker
     plan: free
+    dockerfilePath: Dockerfile
+    autoDeploy: true
 

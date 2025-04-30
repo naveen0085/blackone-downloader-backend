@@ -1,19 +1,22 @@
-FROM node:18-slim
+# Use official Node base image
+FROM node:18
 
-# Install dependencies
+# Install yt-dlp and ffmpeg
 RUN apt-get update && \
-    apt-get install -y python3-pip ffmpeg curl && \
+    apt-get install -y ffmpeg python3-pip && \
     pip3 install yt-dlp
 
-# Create app directory
+# Set working directory
 WORKDIR /app
 
-# Copy files
-COPY package*.json ./
-RUN npm install
+# Copy all files into container
 COPY . .
 
-# Expose port and run server
-EXPOSE 10000
-CMD ["node", "server.js"]
+# Install Node.js dependencies
+RUN npm install
 
+# Expose the port your app uses
+EXPOSE 10000
+
+# Run the app
+CMD ["node", "server.js"]
