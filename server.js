@@ -1,8 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const { execFile } = require("child_process");
-const path = require("path");
+const { spawn } = require("child_process");
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -16,21 +15,35 @@ app.post("/api/json", async (req, res) => {
     return res.status(400).json({ error: "No URL provided" });
   }
 
-  const ytdlpPath = path.join(__dirname, "yt-dlp");
+  const ytdlp = spawn('./yt-dlp', [
+    '--cookies', 'cookies.txt',
+    '-f', 'best',
+    '-g',
+    videoURL
+  ]);
 
-  execFile(
-    ytdlpPath,
-    ["-g", "-f", "best", videoURL],
-    (error, stdout, stderr) => {
-      if (error) {
-        console.error("yt-dlp error:", stderr);
-        return res.status(500).json({ error: "yt-dlp failed", details: stderr });
-      }
+  let output = '';
+  let errorOutput = '';
 
-      const directURL = stdout.trim().split("\n").pop();
-      return res.json({ url: directURL });
+  ytdlp.stdout.on('data', (data) => {
+    output += data.toString();
+  });
+
+  ytdlp.stderr.on('data', (data) => {
+    errorOutput += data.toString();
+  });
+
+  ytdlp.on('close', (code) => {
+    if (code === 0) {
+      const url = output.trim().split('\n').pop();
+      return res.json({ url });
+    } else {
+      return res.status(500).json({
+        error: "yt-dlp failed",
+        details: errorOutput
+      });
     }
-  );
+  });
 });
 
 app.listen(PORT, () => {
