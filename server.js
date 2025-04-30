@@ -1,47 +1,44 @@
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const { spawn } = require("child_process");
+const express = require('express');
+const cors = require('cors');
+const { exec } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-app.post("/api/json", async (req, res) => {
-  const videoURL = req.body.url;
-  if (!videoURL) {
-    return res.status(400).json({ error: "No URL provided" });
+app.post('/download', (req, res) => {
+  const { url } = req.body;
+  if (!url) {
+    return res.status(400).json({ error: 'URL is required' });
   }
 
-  const ytdlp = spawn('./yt-dlp', [
-    '--cookies', 'cookies.txt',
-    '-f', 'best',
-    '-g',
-    videoURL
-  ]);
+  console.log(`Processing download for: ${url}`);
 
-  let output = '';
-  let errorOutput = '';
+  const cookiesPath = path.join(__dirname, 'cookies.txt');
+  const useCookies = fs.existsSync(cookiesPath);
 
-  ytdlp.stdout.on('data', (data) => {
-    output += data.toString();
+  const command = useCookies
+    ? `yt-dlp --cookies "${cookiesPath}" -f b -o - "${url}"`
+    : `yt-dlp -f b -o - "${url}"`;
+
+  const process = exec(command, { maxBuffer: 1024 * 1024 * 100 });
+
+  res.setHeader('Content-Disposition', 'attachment; filename="video.mp4"');
+  res.setHeader('Content-Type', 'video/mp4');
+
+  process.stdout.pipe(res);
+
+  process.stderr.on('data', (data) => {
+    console.error(`yt-dlp error: ${data}`);
   });
 
-  ytdlp.stderr.on('data', (data) => {
-    errorOutput += data.toString();
-  });
-
-  ytdlp.on('close', (code) => {
-    if (code === 0) {
-      const url = output.trim().split('\n').pop();
-      return res.json({ url });
-    } else {
-      return res.status(500).json({
-        error: "yt-dlp failed",
-        details: errorOutput
-      });
+  process.on('close', (code) => {
+    if (code !== 0) {
+      console.error(`yt-dlp process exited with code ${code}`);
     }
   });
 });
