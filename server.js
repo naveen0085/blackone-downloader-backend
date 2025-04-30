@@ -1,45 +1,36 @@
-const express = require('express');
-const cors = require('cors');
-const { exec } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-
+const express = require("express");
+const { exec } = require("child_process");
+const fs = require("fs");
+const path = require("path");
+const cors = require("cors");
 const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.use(cors());
 app.use(express.json());
 
-app.post('/download', (req, res) => {
-  const { url } = req.body;
-  if (!url) {
-    return res.status(400).json({ error: 'URL is required' });
-  }
+app.post("/download", (req, res) => {
+  const videoUrl = req.body.url;
+  console.log(`Processing download for: ${videoUrl}`);
 
-  console.log(`Processing download for: ${url}`);
+  const outputFile = "video.mp4";
+  const command = `yt-dlp -f mp4 -o "${outputFile}" "${videoUrl}"`;
 
-  const cookiesPath = path.join(__dirname, 'cookies.txt');
-  const useCookies = fs.existsSync(cookiesPath);
-
-  const command = useCookies
-    ? `yt-dlp --cookies "${cookiesPath}" -f b -o - "${url}"`
-    : `yt-dlp -f b -o - "${url}"`;
-
-  const process = exec(command, { maxBuffer: 1024 * 1024 * 100 });
-
-  res.setHeader('Content-Disposition', 'attachment; filename="video.mp4"');
-  res.setHeader('Content-Type', 'video/mp4');
-
-  process.stdout.pipe(res);
-
-  process.stderr.on('data', (data) => {
-    console.error(`yt-dlp error: ${data}`);
-  });
-
-  process.on('close', (code) => {
-    if (code !== 0) {
-      console.error(`yt-dlp process exited with code ${code}`);
+  exec(command, (error, stdout, stderr) => {
+    if (error) {
+      console.error("yt-dlp error:", stderr);
+      return res.status(500).send("Download failed.");
     }
+
+    console.log("Download complete. Sending file...");
+    res.download(path.join(__dirname, outputFile), (err) => {
+      if (err) {
+        console.error("File send error:", err);
+      }
+
+      // Clean up the file afterward
+      fs.unlinkSync(outputFile);
+    });
   });
 });
 
