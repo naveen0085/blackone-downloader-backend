@@ -14,6 +14,7 @@ COPY package*.json ./
 RUN npm install
 
 # Copy application files
+COPY cookies.txt .  # Add this!
 COPY . .
 
 # Expose the application port
