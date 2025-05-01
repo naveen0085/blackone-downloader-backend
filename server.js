@@ -20,7 +20,13 @@ app.post("/download", (req, res) => {
   res.setHeader("Content-Type", "video/mp4");
 
   // Command with cookies support
-  const command = `yt-dlp -o - --cookies cookies.txt "${url}"`;
+  const ytdlp = spawn("yt-dlp", [
+    url,
+    "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+    "--merge-output-format", "mp4",
+    "--cookies", "./cookies.txt",
+    "-o", "-"
+  ], { stdio: ["ignore", "pipe", "pipe"] });  
 
   const process = exec(command, { maxBuffer: 1024 * 1024 * 100 });
 
