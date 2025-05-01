@@ -1,33 +1,43 @@
-const express = require('express');
-const cors = require('cors');
-const { exec } = require('child_process');
-const path = require('path');
+const express = require("express");
+const cors = require("cors");
+const { exec } = require("child_process");
 
 const app = express();
-const PORT = 10000;
+const port = process.env.PORT || 10000;
 
 app.use(cors());
 app.use(express.json());
 
-app.post('/download', (req, res) => {
-  const videoUrl = req.body.url;
-  if (!videoUrl) {
-    return res.status(400).json({ error: 'No URL provided' });
+app.post("/download", (req, res) => {
+  const url = req.body.url;
+  if (!url) {
+    return res.status(400).json({ error: "URL is required" });
   }
 
-  const outputPath = path.join(__dirname, 'downloads', '%(title)s.%(ext)s');
-  const command = `yt-dlp -o "${outputPath}" "${videoUrl}"`;
+  console.log("Processing download for:", url);
 
-  exec(command, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Error downloading video: ${stderr}`);
-      return res.status(500).json({ error: 'Failed to download video' });
+  res.setHeader("Content-Disposition", "attachment; filename=video.mp4");
+  res.setHeader("Content-Type", "video/mp4");
+
+  // Command with cookies support
+  const command = `yt-dlp -o - --cookies cookies.txt "${url}"`;
+
+  const process = exec(command, { maxBuffer: 1024 * 1024 * 100 });
+
+  process.stdout.pipe(res);
+
+  process.stderr.on("data", (data) => {
+    console.error("yt-dlp error:", data.toString());
+  });
+
+  process.on("exit", (code) => {
+    console.log(`yt-dlp process exited with code ${code}`);
+    if (code !== 0) {
+      res.end(); // Stop stream if error
     }
-    console.log(`Video downloaded: ${stdout}`);
-    res.status(200).json({ message: 'Download initiated' });
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
